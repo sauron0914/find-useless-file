@@ -1,0 +1,37 @@
+{
+  "name": "find-useless-components",
+  "version": "1.0.0",
+  "description": "",
+  "main": "rollup.config.js",
+  "bin": {
+    "find-useless-components": "./bin/init.js"
+  },
+  "scripts": {
+    "dev": "rollup -c -w",
+    "build": "rollup -c"
+  },
+  "keywords": [
+    "component",
+    "statistics"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sauron0914/find-useless-components.git"
+  },
+  "author": "sauron0914(s_sauron@163.com)",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^13.9.1",
+    "chalk": "^3.0.0",
+    "commander": "^5.0.0",
+    "console-grid": "^1.0.16",
+    "inquirer": "^7.1.0",
+    "ora": "^4.0.3",
+    "rollup": "^2.0.6",
+    "typescript": "^3.8.3"
+  },
+  "devDependencies": {
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-typescript": "^1.0.1"
+  }
+}
