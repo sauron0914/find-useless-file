@@ -10,6 +10,9 @@
 
 
 ## Usage
+
+> filePath1 为你需要检测无用文件的文件夹 filePath2为你检测的范围
+
 ```bash
-    find-useless-components do
+    find-useless-components do filePath1 filePath2
 ```

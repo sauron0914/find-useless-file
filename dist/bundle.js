@@ -29,20 +29,51 @@ var traverseFile = function (src, callback) {
 
 var fs = require('fs');
 var exec = require('child_process').exec;
-var Grid = require("console-grid");
 var cwd = process.cwd() + '/';
 var aliasReg = cwd + 'src';
 var fileName = 'find-useless-components.json';
+var argvs = process.argv.splice(3).map(function (item) {
+    if (item.substr(item.length - 1) === '/') {
+        return item.substr(0, item.length - 1);
+    }
+    return item;
+});
+if (argvs.length !== 2) {
+    throw new Error('仅支持命令 find-useless-components do filePath1 filePath2');
+}
+var aliasSrc = function (path) { return path.replace(aliasReg, '@').replace(/(\/index)?.js(x)?/g, ''); };
 var findUselessComponents = function () {
     var componentsPaths = {};
-    traverseFile(cwd + 'src/components', function (path) {
-        componentsPaths[path.replace(aliasReg, '@').replace(/(\/index)?.js(x)?/g, '')] = 0;
+    traverseFile(cwd + argvs[0], function (path) {
+        componentsPaths[path] = 0;
     });
-    traverseFile(cwd + 'src/containers', function (path) {
+    traverseFile(cwd + argvs[1], function (path) {
         var readFileSyncRes = fs.readFileSync(path, 'utf8');
+        var currentPathLevel = path.match(/[\w\/]+\//ig)[0];
+        var fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
+        // 相对路径匹配
+        var matchRes = fromList.map(function (item) {
+            return item.replace("from ", '').replace(/\'/g, '');
+        }).filter(function (item) {
+            return item.includes('.') | item.includes('@');
+        }).map(function (item) {
+            if (item.includes('@')) {
+                return item.replace('@', aliasReg);
+            }
+            else {
+                var levelCount = item.match(/\.\./g);
+                if (levelCount) {
+                    var arr = currentPathLevel.split('/');
+                    return arr.splice(0, arr.length - 2).join('/') + item.replace(/\.\./g, '');
+                }
+                else {
+                    return item.replace('./', currentPathLevel);
+                }
+            }
+        });
         Object.entries(componentsPaths).reduce(function (pre, _a) {
             var key = _a[0], value = _a[1];
-            if (readFileSyncRes.includes(key)) {
+            if (readFileSyncRes.includes(aliasSrc(key)) || matchRes.includes(key)) {
                 componentsPaths[key]++;
             }
             return pre;
@@ -55,6 +86,7 @@ var findUselessComponents = function () {
         }
         return pre;
     }, []);
+    console.log('res', res);
     fs.writeFile(cwd + 'find-useless-components.json', JSON.stringify(res, null, '\t'), {}, function (err) {
         if (err)
             console.log(err);
