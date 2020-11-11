@@ -1,10 +1,10 @@
 {
-  "name": "find-useless-components",
-  "version": "1.0.1",
+  "name": "find-useless-file",
+  "version": "1.0.0",
   "description": "",
   "main": "rollup.config.js",
   "bin": {
-    "find-useless-components": "./bin/init.js"
+    "find-useless-file": "./bin/init.js"
   },
   "scripts": {
     "dev": "rollup -c -w",
@@ -16,7 +16,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sauron0914/find-useless-components.git"
+    "url": "git+https://github.com/sauron0914/find-useless-file.git"
   },
   "author": "sauron0914(s_sauron@163.com)",
   "license": "ISC",

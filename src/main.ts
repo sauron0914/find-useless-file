@@ -5,7 +5,7 @@ const cwd = process.cwd() + '/'
 
 const aliasReg =  cwd + 'src'
 
-const fileName = 'find-useless-components.json'
+const fileName = 'find-useless-file.json'
 
 const argvs = process.argv.splice(3).map(item=> {
     if(item.substr(item.length -1) === '/') {
@@ -15,12 +15,14 @@ const argvs = process.argv.splice(3).map(item=> {
 })
 
 if(argvs.length !== 2) {
-    throw new Error('仅支持命令 find-useless-components do filePath1 filePath2');
+    throw new Error('仅支持命令 find-useless-file do filePath1 filePath2');
 }
 
-const aliasSrc = path => path.replace(aliasReg, '@').replace(/(\/index)?.js(x)?/g, '')
+const aliasSrc = path => dealIndexJS(path.replace(aliasReg, '@'))
 
-const findUselessComponents  = ()=> {
+const dealIndexJS = path => path.replace(/(\/index)?.js(x)?/g, '')
+
+const findUselessFile  = ()=> {
 
     const componentsPaths = {}
 
@@ -55,8 +57,8 @@ const findUselessComponents  = ()=> {
             }
         })
 
-        Object.entries(componentsPaths).reduce((pre, [key, value])=> {
-            if(readFileSyncRes.includes(aliasSrc(key)) || matchRes.includes(key)) {
+        Object.entries(componentsPaths).reduce((pre, [key])=> {
+            if(readFileSyncRes.includes(aliasSrc(key)) || matchRes.includes(dealIndexJS(key))) {
                 componentsPaths[key]++
             }
             return pre
@@ -72,7 +74,7 @@ const findUselessComponents  = ()=> {
 
     console.log('res', res)
 
-    fs.writeFile(cwd+'find-useless-components.json', JSON.stringify(res, null, '\t'), {} ,function(err){
+    fs.writeFile(cwd+'find-useless-file.json', JSON.stringify(res, null, '\t'), {} ,function(err){
         if(err) console.log(err)
         console.log('文件创建成功，地址：' + cwd+fileName);
         console.log(`!!!注意：默认会在当前目录下生成一个${fileName}文件`)
@@ -81,4 +83,4 @@ const findUselessComponents  = ()=> {
 
 }
 
-export { findUselessComponents }
+export { findUselessFile }

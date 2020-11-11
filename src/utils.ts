@@ -1,6 +1,6 @@
 import fs from 'fs'
 
-const includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html']
+const includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html', '.less']
 
 const matchSuffix = (str: string)=> {
     const res = str.match(/\.\w+/g)

@@ -8,7 +8,7 @@ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'defau
 
 var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs$1);
 
-var includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html'];
+var includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html', '.less'];
 var matchSuffix = function (str) {
     var res = str.match(/\.\w+/g);
     return res ? res[res.length - 1] : '';
@@ -31,7 +31,7 @@ var fs = require('fs');
 var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
 var aliasReg = cwd + 'src';
-var fileName = 'find-useless-components.json';
+var fileName = 'find-useless-file.json';
 var argvs = process.argv.splice(3).map(function (item) {
     if (item.substr(item.length - 1) === '/') {
         return item.substr(0, item.length - 1);
@@ -39,10 +39,11 @@ var argvs = process.argv.splice(3).map(function (item) {
     return item;
 });
 if (argvs.length !== 2) {
-    throw new Error('仅支持命令 find-useless-components do filePath1 filePath2');
+    throw new Error('仅支持命令 find-useless-file do filePath1 filePath2');
 }
-var aliasSrc = function (path) { return path.replace(aliasReg, '@').replace(/(\/index)?.js(x)?/g, ''); };
-var findUselessComponents = function () {
+var aliasSrc = function (path) { return dealIndexJS(path.replace(aliasReg, '@')); };
+var dealIndexJS = function (path) { return path.replace(/(\/index)?.js(x)?/g, ''); };
+var findUselessFile = function () {
     var componentsPaths = {};
     traverseFile(cwd + argvs[0], function (path) {
         componentsPaths[path] = 0;
@@ -72,8 +73,8 @@ var findUselessComponents = function () {
             }
         });
         Object.entries(componentsPaths).reduce(function (pre, _a) {
-            var key = _a[0], value = _a[1];
-            if (readFileSyncRes.includes(aliasSrc(key)) || matchRes.includes(key)) {
+            var key = _a[0];
+            if (readFileSyncRes.includes(aliasSrc(key)) || matchRes.includes(dealIndexJS(key))) {
                 componentsPaths[key]++;
             }
             return pre;
@@ -87,7 +88,7 @@ var findUselessComponents = function () {
         return pre;
     }, []);
     console.log('res', res);
-    fs.writeFile(cwd + 'find-useless-components.json', JSON.stringify(res, null, '\t'), {}, function (err) {
+    fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(res, null, '\t'), {}, function (err) {
         if (err)
             console.log(err);
         console.log('文件创建成功，地址：' + cwd + fileName);
@@ -96,4 +97,4 @@ var findUselessComponents = function () {
     });
 };
 
-exports.findUselessComponents = findUselessComponents;
+exports.findUselessFile = findUselessFile;

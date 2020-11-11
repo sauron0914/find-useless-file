@@ -14,7 +14,7 @@ program.usage('<command>')
 program
     .command('do')
     .description('create your Template')
-    .action(commands.findUselessComponents)
+    .action(commands.findUselessFile)
 
 program.parse(process.argv)
 
