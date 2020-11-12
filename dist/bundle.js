@@ -64,53 +64,58 @@ var argvs = process.argv.splice(3).map(function (item) {
 if (argvs.length !== 2) {
     throw new Error('仅支持命令 find-useless-file do filePath1 filePath2');
 }
-// const aliasSrc = path => dealIndexJS(path.replace(aliasReg, '@'))
-var dealIndexJS = function (path) { return path.replace(/(\/index)?.js(x)?/g, ''); };
+var dealIndexJS = function (path) { return path.replace(/(\/index)?.(j|t)s(x)?/g, ''); };
 var findUselessFile = function () {
+    exec('rm -rf ' + cwd + fileName);
     console.log('开始查找文件....');
     var componentsPaths = {};
+    // 存一份需要检测的路径
     traverseFile(cwd + argvs[0], function (path) {
         componentsPaths[path] = 0;
     });
     traverseFile(cwd + argvs[1], function (path) {
         var readFileSyncRes = fs.readFileSync(path, 'utf8');
         var currentPathLevel = path.match(/[@\w\/-]+\//ig)[0];
+        // 找到 from 'react', from './detail.js' 等
         var fromListFrom = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
+        // 找到 import './index.less', import './detail.less' 等
         var fromList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || [];
         // 相对路径匹配
         var matchRes = __spreadArrays(fromListFrom, fromList).map(function (item) {
-            return item.replace("from ", '').replace("import ").replace(/\'/g, '');
+            // 去掉 "from ", "import "
+            return item.replace("from ", '').replace("import ", '').replace(/\'/g, '');
         }).filter(function (item) {
-            return item.includes('.') | item.includes('@');
+            // 去掉第三方库 "react" "vue" "moment" 等
+            return item.includes('.') || item.includes('@');
         }).map(function (item) {
+            // 相对路径转化成绝对路径
+            // 转化 alias @ 
             if (item.includes('@')) {
                 return item.replace('@', aliasReg);
             }
             else {
+                // 转化 ../../../ 
                 var levelCount = item.match(/\.\./g);
                 if (levelCount) {
                     var arr = currentPathLevel.split('/');
                     return arr.splice(0, arr.length - (levelCount.length + 1)).join('/') + item.replace(/\.\./g, '');
                 }
                 else {
+                    // 非 ../../ ../ 等，应该只是 ./
                     return item.replace('./', currentPathLevel);
                 }
             }
         });
+        if (!matchRes.length)
+            return;
+        // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(componentsPaths).forEach(function (key) {
-            if (matchRes.some(function (item) { return item.includes(dealIndexJS(key)); })) {
-                componentsPaths[key]++;
+            if (matchRes.some(function (item) { return dealIndexJS(item) === dealIndexJS(key); })) {
+                delete componentsPaths[key];
             }
         });
     });
-    var res = Object.entries(componentsPaths).reduce(function (pre, _a) {
-        var key = _a[0], value = _a[1];
-        if (!value) {
-            pre.push(key.replace(cwd, ''));
-        }
-        return pre;
-    }, []);
-    fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(res, null, '\t'), {}, function (err) {
+    fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(Object.keys(componentsPaths).map(function (item) { return item.replace(cwd, ''); }), null, '\t'), {}, function (err) {
         if (err)
             console.log(err);
         console.log('文件查找成功，存放地址：' + cwd + fileName);
