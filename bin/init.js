@@ -12,9 +12,14 @@ program.version(version)
 program.usage('<command>')
 
 program
-    .command('do')
-    .description('create your Template')
+    .command('find')
+    .description('find useless file')
     .action(commands.findUselessFile)
+
+program
+    .command('del')
+    .description('del useless file')
+    .action(commands.delUselessFile)
 
 program.parse(process.argv)
 

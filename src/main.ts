@@ -7,24 +7,24 @@ const aliasReg =  cwd + 'src'
 
 const fileName = 'find-useless-file.json'
 
-const argvs = process.argv.splice(3).map(item=> {
-    if(item.substr(item.length -1) === '/') {
-        return item.substr(0, item.length -1)
-    }
-    return item
-})
-
-if(argvs.length !== 2) {
-    throw new Error('仅支持命令 find-useless-file do filePath1 filePath2');
-}
-
 const dealIndexJS = path => path.replace(/(\/index)?.(j|t)s(x)?/g, '')
 
 const findUselessFile  = ()=> {
 
+    const argvs = process.argv.splice(3).map(item=> {
+        if(item.substr(item.length -1) === '/') {
+            return item.substr(0, item.length -1)
+        }
+        return item
+    })
+    
+    if(argvs.length !== 2) {
+        throw new Error('仅支持命令 find-useless-file find filePath1 filePath2');
+    }
+
     exec( 'rm -rf ' + cwd + fileName)
 
-    console.log('开始查找文件...')
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始查找文件...')
 
     const componentsPaths = {}
 
@@ -33,9 +33,9 @@ const findUselessFile  = ()=> {
         componentsPaths[path] = 0
     })
 
-    console.log(`${argvs[0]} 目录下共检测到${Object.keys(componentsPaths).length}个文件`)
+    console.log(`🎉 🎉 🎉 ${argvs[0]} 目录下共检测到${Object.keys(componentsPaths).length}个文件`)
 
-    console.log('开始匹配文件...')
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始匹配文件...')
 
     traverseFile(cwd + argvs[1], path => {
         const readFileSyncRes = fs.readFileSync(path , 'utf8')
@@ -95,13 +95,32 @@ const findUselessFile  = ()=> {
         {},
         function(err){
             if(err) console.log(err)
-            console.log('文件查找成功，存放地址：' + cwd+fileName);
-            console.log('共找到' + Object.keys(componentsPaths).length + '个未被使用的文件')
-            console.log(`!!!注意：默认会在当前目录下生成一个${fileName}文件`)
+            console.log('🎉 🎉 🎉 文件查找成功，存放地址：' + cwd+fileName);
+            console.log('💝 💝 💝共找到' + Object.keys(componentsPaths).length + '个未被使用的文件')
+            console.log(`❗ ❗ ❗ 注意：默认会在当前目录下生成一个${fileName}文件`)
             exec( 'open ' + cwd + fileName)
         }
     )
-
 }
 
-export { findUselessFile }
+const delUselessFile = ()=> {
+
+    console.log('🔥 🔥 🔥 I am sure you know what you are doing!!!')
+
+    console.log('🏊🏻 🏊🏻 🏊🏻 delete useless file...')
+
+    const readFileSyncRes = fs.readFileSync(cwd + fileName , 'utf8')
+
+    const list = JSON.parse(readFileSyncRes)
+
+    list.forEach(item => {
+        fs.unlinkSync(item);
+    });
+
+    fs.unlinkSync(cwd + fileName)
+
+    console.log('🎉 🎉 🎉delete success')
+    
+}
+
+export { findUselessFile, delUselessFile }
