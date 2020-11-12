@@ -21,7 +21,7 @@
 
 ## 说明
 
-**使用 find-useless-file find filePath1 filePath2 和 find-useless-file del 删除了无用的组件后, 再次执行 find-useless-file find filePath1 filePath2 发现还有为删除的文件，可能是正常情况**
+**使用 find-useless-file find filePath1 filePath2 和 find-useless-file del 删除了无用的组件后, 再次执行 find-useless-file find filePath1 filePath2 发现还有未删除的文件，可能是正常情况**
 
 举个例子：
 
