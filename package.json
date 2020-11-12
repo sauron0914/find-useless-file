@@ -1,6 +1,6 @@
 {
   "name": "find-useless-file",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "main": "rollup.config.js",
   "bin": {
@@ -25,7 +25,6 @@
     "chalk": "^3.0.0",
     "commander": "^5.0.0",
     "inquirer": "^7.1.0",
-    "ora": "^4.0.3",
     "rollup": "^2.0.6",
     "typescript": "^3.8.3"
   },

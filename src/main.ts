@@ -24,7 +24,7 @@ const findUselessFile  = ()=> {
 
     exec( 'rm -rf ' + cwd + fileName)
 
-    console.log('开始查找文件....')
+    console.log('开始查找文件...')
 
     const componentsPaths = {}
 
@@ -32,6 +32,10 @@ const findUselessFile  = ()=> {
     traverseFile(cwd + argvs[0], path => {
         componentsPaths[path] = 0
     })
+
+    console.log(`${argvs[0]} 目录下共检测到${Object.keys(componentsPaths).length}个文件`)
+
+    console.log('开始匹配文件...')
 
     traverseFile(cwd + argvs[1], path => {
         const readFileSyncRes = fs.readFileSync(path , 'utf8')
@@ -47,6 +51,12 @@ const findUselessFile  = ()=> {
         const matchRes: string[] = [...fromListFrom, ...fromList].map(item=> {
             // 去掉 "from ", "import "
             return item.replace("from ", '').replace("import ", '').replace(/\'/g, '')
+        }).map(item=>{
+            // 兼容引用文件时，结尾为 '/' 的情况
+            if(item.substr(item.length -1) === '/') {
+                return item.substr(0, item.length -1)
+            }
+            return item
         }).filter(item=> {
             // 去掉第三方库 "react" "vue" "moment" 等
             return item.includes('.') || item.includes('@')
@@ -61,7 +71,7 @@ const findUselessFile  = ()=> {
                 const levelCount = item.match(/\.\./g)
                 if(levelCount) {
                     const arr = currentPathLevel.split('/')
-                    return arr.splice(0, arr.length - (levelCount.length+1)).join('/') + item.replace(/\.\./g, '')
+                    return arr.splice(0, arr.length - (levelCount.length+1)).join('/') + '/' + item.replace(/\.\.\//g, '')
                 } else {
                     // 非 ../../ ../ 等，应该只是 ./
                     return item.replace('./', currentPathLevel)
@@ -86,6 +96,7 @@ const findUselessFile  = ()=> {
         function(err){
             if(err) console.log(err)
             console.log('文件查找成功，存放地址：' + cwd+fileName);
+            console.log('共找到' + Object.keys(componentsPaths).length + '个未被使用的文件')
             console.log(`!!!注意：默认会在当前目录下生成一个${fileName}文件`)
             exec( 'open ' + cwd + fileName)
         }

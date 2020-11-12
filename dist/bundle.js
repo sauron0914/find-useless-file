@@ -67,12 +67,14 @@ if (argvs.length !== 2) {
 var dealIndexJS = function (path) { return path.replace(/(\/index)?.(j|t)s(x)?/g, ''); };
 var findUselessFile = function () {
     exec('rm -rf ' + cwd + fileName);
-    console.log('开始查找文件....');
+    console.log('开始查找文件...');
     var componentsPaths = {};
     // 存一份需要检测的路径
     traverseFile(cwd + argvs[0], function (path) {
         componentsPaths[path] = 0;
     });
+    console.log(argvs[0] + " \u76EE\u5F55\u4E0B\u5171\u68C0\u6D4B\u5230" + Object.keys(componentsPaths).length + "\u4E2A\u6587\u4EF6");
+    console.log('开始匹配文件...');
     traverseFile(cwd + argvs[1], function (path) {
         var readFileSyncRes = fs.readFileSync(path, 'utf8');
         var currentPathLevel = path.match(/[@\w\/-]+\//ig)[0];
@@ -84,6 +86,12 @@ var findUselessFile = function () {
         var matchRes = __spreadArrays(fromListFrom, fromList).map(function (item) {
             // 去掉 "from ", "import "
             return item.replace("from ", '').replace("import ", '').replace(/\'/g, '');
+        }).map(function (item) {
+            // 兼容引用文件时，结尾为 '/' 的情况
+            if (item.substr(item.length - 1) === '/') {
+                return item.substr(0, item.length - 1);
+            }
+            return item;
         }).filter(function (item) {
             // 去掉第三方库 "react" "vue" "moment" 等
             return item.includes('.') || item.includes('@');
@@ -98,7 +106,7 @@ var findUselessFile = function () {
                 var levelCount = item.match(/\.\./g);
                 if (levelCount) {
                     var arr = currentPathLevel.split('/');
-                    return arr.splice(0, arr.length - (levelCount.length + 1)).join('/') + item.replace(/\.\./g, '');
+                    return arr.splice(0, arr.length - (levelCount.length + 1)).join('/') + '/' + item.replace(/\.\.\//g, '');
                 }
                 else {
                     // 非 ../../ ../ 等，应该只是 ./
@@ -119,6 +127,7 @@ var findUselessFile = function () {
         if (err)
             console.log(err);
         console.log('文件查找成功，存放地址：' + cwd + fileName);
+        console.log('共找到' + Object.keys(componentsPaths).length + '个未被使用的文件');
         console.log("!!!\u6CE8\u610F\uFF1A\u9ED8\u8BA4\u4F1A\u5728\u5F53\u524D\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A" + fileName + "\u6587\u4EF6");
         exec('open ' + cwd + fileName);
     });
