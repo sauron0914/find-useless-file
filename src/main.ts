@@ -1,4 +1,4 @@
-import { traverseFile } from './utils'
+import { deleteEmptyFolder, traverseFile } from './utils'
 const fs = require('fs')
 const path = require('path')
 const exec = require('child_process').exec
@@ -45,7 +45,7 @@ const findUselessFile  = ()=> {
     traverseFile(cwd + argvs[0], path => {
          // 过滤掉 src/global.d.ts src/index.js src/index.ts
         if(filterFiles.some(item=> item === path.replace(cwd, ''))) return
-        
+
         componentsPaths[path] = 0
     })
 
@@ -151,8 +151,21 @@ const delUselessFile = ()=> {
 
     fs.unlinkSync(cwd + fileName)
 
-    console.log('🎉 🎉 🎉delete success')
+    console.log('🎉 🎉 🎉delete success!!!')
     
 }
 
-export { findUselessFile, delUselessFile }
+const delEmptyDir = () => {
+    const argvs = process.argv.splice(3)
+    if(argvs.length !== 1) {
+        throw new Error('仅支持命令 find-useless-file delDir filePath');
+    }
+
+    console.log('🏊🏻 🏊🏻 🏊🏻 delete empty folder...')
+
+    deleteEmptyFolder(cwd + argvs[0])
+
+    console.log('🎉 🎉 🎉delete success!!!')
+}
+
+export { findUselessFile, delUselessFile, delEmptyDir }

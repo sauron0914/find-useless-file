@@ -13,10 +13,13 @@
 
 ```bash
     # 找到 filePath1 中无用的文件
-    find-useless-file find filePath1 filePath2
+    find-useless-file find file-path1 file-path2
 
     # 删除 filePath1 无用的文件
     find-useless-file del
+
+    # 删除 空文件夹
+    find-useless-file del-empty file-path1
 ```
 
 ## 说明
@@ -34,3 +37,5 @@
 你可能需要再次执行 `find-useless-file find filePath1 filePath2` 命令，直到没有无用文件为止 🤔 🤔 🤔
 
 - 如果你被检测的文件是src/ 文件，那 src/index.js src/index.ts src/global.d.ts 即使没有被其他文件引用，也不会被检测出来
+
+- 清理无用文件结束后，可能会留很多空文件夹，使用 `find-useless-file del-empty file-path1` 命令删除

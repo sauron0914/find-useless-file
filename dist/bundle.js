@@ -41,13 +41,33 @@ var traverseFile = function (src, callback) {
     paths.forEach(function (path) {
         var _src = src + '/' + path;
         var statSyncRes = fs__default['default'].statSync(_src);
-        if (statSyncRes.isFile() && includeFile.includes(matchSuffix(path))) { //如果是个文件则拷贝
+        if (statSyncRes.isFile() && includeFile.includes(matchSuffix(path))) {
             callback(_src);
         }
         else if (statSyncRes.isDirectory()) { //是目录则 递归 
             traverseFile(_src, callback);
         }
     });
+};
+var deleteEmptyFolder = function (path) {
+    var files = [];
+    if (fs__default['default'].existsSync(path)) {
+        files = fs__default['default'].readdirSync(path);
+        files.forEach(function (file) {
+            var curPath = path + "/" + file;
+            if (fs__default['default'].statSync(curPath).isDirectory()) {
+                if (fs__default['default'].readdirSync(curPath).length) {
+                    deleteEmptyFolder(curPath);
+                }
+                else {
+                    fs__default['default'].rmdirSync(curPath);
+                }
+            }
+        });
+        if (!fs__default['default'].readdirSync(path).length) {
+            fs__default['default'].rmdirSync(path);
+        }
+    }
 };
 
 var fs = require('fs');
@@ -167,8 +187,18 @@ var delUselessFile = function () {
         fs.unlinkSync(item);
     });
     fs.unlinkSync(cwd + fileName);
-    console.log('🎉 🎉 🎉delete success');
+    console.log('🎉 🎉 🎉delete success!!!');
+};
+var delEmptyDir = function () {
+    var argvs = process.argv.splice(3);
+    if (argvs.length !== 1) {
+        throw new Error('仅支持命令 find-useless-file delDir filePath');
+    }
+    console.log('🏊🏻 🏊🏻 🏊🏻 delete empty folder...');
+    deleteEmptyFolder(cwd + argvs[0]);
+    console.log('🎉 🎉 🎉delete success!!!');
 };
 
+exports.delEmptyDir = delEmptyDir;
 exports.delUselessFile = delUselessFile;
 exports.findUselessFile = findUselessFile;

@@ -21,6 +21,11 @@ program
     .description('del useless file')
     .action(commands.delUselessFile)
 
+program
+    .command('del-empty-dir')
+    .description('del Empty folder')
+    .action(commands.delEmptyDir)
+
 program.parse(process.argv)
 
 if(!program.args.length){
