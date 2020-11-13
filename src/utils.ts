@@ -1,7 +1,5 @@
 import fs from 'fs'
 
-const includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html', '.less']
-
 const matchSuffix = (str: string)=> {
     const res = str.match(/\.\w+/g)
     return res ? res[res.length-1] : ''
@@ -12,7 +10,7 @@ export const traverseFile= (src ,callback) => {
     paths.forEach(path => {
         const _src = src + '/' + path
         const statSyncRes = fs.statSync(_src)
-        if(statSyncRes.isFile() && includeFile.includes(matchSuffix(path))) {
+        if(statSyncRes.isFile()) {
             callback(_src)
         } else if(statSyncRes.isDirectory()){ //是目录则 递归 
             traverseFile(_src, callback)

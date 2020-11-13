@@ -6,8 +6,16 @@ const cwd = process.cwd() + '/'
 
 const fileName = 'find-useless-file.json'
 
-const dealIndexJS = path => path.replace(/(\/index)?(.(j|t)s(x)?)?/g, '')
-// const dealIndexJS = path => path.replace(/(\/index)?(.\w+?)?/g, '')
+// const dealIndexJS = path => path.replace(/(\/index)?(.(((j|t)s(x)?)|(less|scss)))?/g, '')
+const dealIndexJS = path => {
+
+    const res = path.split('.')
+
+    const noSuffix = res.length > 1 ? res.slice(0, res.length -1).join('.') : path
+
+    return noSuffix.replace(/\/index$/g, '')
+    
+}
  
 const Reg = {
     form: /(from (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
@@ -100,17 +108,10 @@ const findUselessFile  = ()=> {
         })
 
         if(!matchRes.length) return
- 
+
         // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(componentsPaths).forEach((key)=> {
-            if(matchRes.some(item=> {
-                // console.log('-----------------------')
-                // console.log(item)
-                // console.log(dealIndexJS(item))
-                // console.log(key)
-                // console.log(dealIndexJS(key))
-                return dealIndexJS(item) === dealIndexJS(key)
-            })) {
+            if(matchRes.some(item=> dealIndexJS(item) === dealIndexJS(key))) {
                 delete componentsPaths[key]
             }
         })

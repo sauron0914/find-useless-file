@@ -31,17 +31,12 @@ function __spreadArrays() {
     return r;
 }
 
-var includeFile = ['.tsx', '.jsx', '.ts', '.js', '.vue', '.html', '.less'];
-var matchSuffix = function (str) {
-    var res = str.match(/\.\w+/g);
-    return res ? res[res.length - 1] : '';
-};
 var traverseFile = function (src, callback) {
     var paths = fs__default['default'].readdirSync(src).filter(function (item) { return item !== 'node_modules'; });
     paths.forEach(function (path) {
         var _src = src + '/' + path;
         var statSyncRes = fs__default['default'].statSync(_src);
-        if (statSyncRes.isFile() && includeFile.includes(matchSuffix(path))) {
+        if (statSyncRes.isFile()) {
             callback(_src);
         }
         else if (statSyncRes.isDirectory()) { //是目录则 递归 
@@ -75,8 +70,12 @@ var path = require('path');
 var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
 var fileName = 'find-useless-file.json';
-var dealIndexJS = function (path) { return path.replace(/(\/index)?(.(j|t)s(x)?)?/g, ''); };
-// const dealIndexJS = path => path.replace(/(\/index)?(.\w+?)?/g, '')
+// const dealIndexJS = path => path.replace(/(\/index)?(.(((j|t)s(x)?)|(less|scss)))?/g, '')
+var dealIndexJS = function (path) {
+    var res = path.split('.');
+    var noSuffix = res.length > 1 ? res.slice(0, res.length - 1).join('.') : path;
+    return noSuffix.replace(/\/index$/g, '');
+};
 var Reg = {
     form: /(from (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
     import: /(import (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
@@ -153,14 +152,7 @@ var findUselessFile = function () {
             return;
         // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(componentsPaths).forEach(function (key) {
-            if (matchRes.some(function (item) {
-                // console.log('-----------------------')
-                // console.log(item)
-                // console.log(dealIndexJS(item))
-                // console.log(key)
-                // console.log(dealIndexJS(key))
-                return dealIndexJS(item) === dealIndexJS(key);
-            })) {
+            if (matchRes.some(function (item) { return dealIndexJS(item) === dealIndexJS(key); })) {
                 delete componentsPaths[key];
             }
         });
