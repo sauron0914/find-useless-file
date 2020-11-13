@@ -7,7 +7,7 @@ const aliasReg =  cwd + 'src'
 
 const fileName = 'find-useless-file.json'
 
-const dealIndexJS = path => path.replace(/(\/index)?.(j|t)s(x)?/g, '')
+const dealIndexJS = path => path.replace(/(\/index)?(.(j|t)s(x)?)?/g, '')
 
 const findUselessFile  = ()=> {
 

@@ -55,7 +55,7 @@ var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
 var aliasReg = cwd + 'src';
 var fileName = 'find-useless-file.json';
-var dealIndexJS = function (path) { return path.replace(/(\/index)?.(j|t)s(x)?/g, ''); };
+var dealIndexJS = function (path) { return path.replace(/(\/index)?(.(j|t)s(x)?)?/g, ''); };
 var findUselessFile = function () {
     var argvs = process.argv.splice(3).map(function (item) {
         if (item.substr(item.length - 1) === '/') {
