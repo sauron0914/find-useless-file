@@ -51,6 +51,7 @@ var traverseFile = function (src, callback) {
 };
 
 var fs = require('fs');
+var path = require('path');
 var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
 var aliasReg = cwd + 'src';
@@ -74,10 +75,10 @@ var findUselessFile = function () {
         componentsPaths[path] = 0;
     });
     console.log("\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89 " + argvs[0] + " \u76EE\u5F55\u4E0B\u5171\u68C0\u6D4B\u5230" + Object.keys(componentsPaths).length + "\u4E2A\u6587\u4EF6");
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始匹配文件...');
-    traverseFile(cwd + argvs[1], function (path) {
-        var readFileSyncRes = fs.readFileSync(path, 'utf8');
-        var currentPathLevel = path.match(/[@\w\/-]+\//ig)[0];
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始检测文件...');
+    console.log('❗ ❗ ❗ 文件检测越多，检测范围越大，用时越久...');
+    traverseFile(cwd + argvs[1], function (filePath) {
+        var readFileSyncRes = fs.readFileSync(filePath, 'utf8');
         // 找到 from 'react', from './detail.js' 等
         var fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
         // 找到 import './index.less', import './detail.less' 等
@@ -100,25 +101,16 @@ var findUselessFile = function () {
             return item;
         }).filter(function (item) {
             // 去掉第三方库 "react" "vue" "moment" 等
-            return item.includes('.') || item.includes('@');
+            var firstStr = item.substr(0, 1);
+            return firstStr === '.' || firstStr === '@';
         }).map(function (item) {
             // 相对路径转化成绝对路径
             // 转化 alias @ 
             if (item.includes('@')) {
                 return item.replace('@', aliasReg);
             }
-            else {
-                // 转化 ../../../ 
-                var levelCount = item.match(/\.\./g);
-                if (levelCount) {
-                    var arr = currentPathLevel.split('/');
-                    return arr.splice(0, arr.length - (levelCount.length + 1)).join('/') + '/' + item.replace(/\.\.\//g, '');
-                }
-                else {
-                    // 非 ../../ ../ 等，应该只是 ./
-                    return item.replace('./', currentPathLevel);
-                }
-            }
+            // 其他相对路径转化
+            return path.resolve(filePath, '..', item);
         });
         if (!matchRes.length)
             return;

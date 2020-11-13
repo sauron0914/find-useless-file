@@ -1,5 +1,6 @@
 import { traverseFile } from './utils'
 const fs = require('fs')
+const path = require('path')
 const exec = require('child_process').exec
 const cwd = process.cwd() + '/'
 
@@ -8,7 +9,7 @@ const aliasReg =  cwd + 'src'
 const fileName = 'find-useless-file.json'
 
 const dealIndexJS = path => path.replace(/(\/index)?(.(j|t)s(x)?)?/g, '')
-
+ 
 const findUselessFile  = ()=> {
 
     const argvs = process.argv.splice(3).map(item=> {
@@ -35,11 +36,13 @@ const findUselessFile  = ()=> {
 
     console.log(`🎉 🎉 🎉 ${argvs[0]} 目录下共检测到${Object.keys(componentsPaths).length}个文件`)
 
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始匹配文件...')
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始检测文件...')
 
-    traverseFile(cwd + argvs[1], path => {
-        const readFileSyncRes = fs.readFileSync(path , 'utf8')
-        const currentPathLevel = path.match(/[@\w\/-]+\//ig)[0]
+    console.log('❗ ❗ ❗ 文件检测越多，检测范围越大，用时越久...')
+
+    traverseFile(cwd + argvs[1], filePath => {
+
+        const readFileSyncRes = fs.readFileSync(filePath , 'utf8')
 
         // 找到 from 'react', from './detail.js' 等
         const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
@@ -66,24 +69,16 @@ const findUselessFile  = ()=> {
             return item
         }).filter(item=> {
             // 去掉第三方库 "react" "vue" "moment" 等
-            return item.includes('.') || item.includes('@')
+            const firstStr = item.substr(0,1)
+            return firstStr === '.' || firstStr === '@'
         }).map(item=>{
             // 相对路径转化成绝对路径
-            
             // 转化 alias @ 
             if(item.includes('@')) {
                 return item.replace('@', aliasReg)
-            } else {
-                // 转化 ../../../ 
-                const levelCount = item.match(/\.\./g)
-                if(levelCount) {
-                    const arr = currentPathLevel.split('/')
-                    return arr.splice(0, arr.length - (levelCount.length+1)).join('/') + '/' + item.replace(/\.\.\//g, '')
-                } else {
-                    // 非 ../../ ../ 等，应该只是 ./
-                    return item.replace('./', currentPathLevel)
-                }
             }
+            // 其他相对路径转化
+            return path.resolve(filePath, '..', item)
         })
 
         if(!matchRes.length) return
