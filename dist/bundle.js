@@ -131,7 +131,7 @@ var findUselessFile = function () {
     });
     if (!Object.keys(componentsPaths).length) {
         console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！');
-        // return
+        return;
     }
     fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(Object.keys(componentsPaths).map(function (item) { return item.replace(cwd, ''); }), null, '\t'), {}, function (err) {
         if (err)
