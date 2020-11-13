@@ -54,9 +54,20 @@ var fs = require('fs');
 var path = require('path');
 var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
-var aliasReg = cwd + 'src';
 var fileName = 'find-useless-file.json';
 var dealIndexJS = function (path) { return path.replace(/(\/index)?(.(j|t)s(x)?)?/g, ''); };
+// const dealIndexJS = path => path.replace(/(\/index)?(.\w+?)?/g, '')
+var Reg = {
+    form: /(from (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
+    import: /(import (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
+    require: /(import|require)\((('[.@\/\w-]+')|("[.@\/\w-]+)")/g,
+};
+// 默认被过滤的文件
+var filterFiles = [
+    'src/index.ts',
+    'src/index.js',
+    'src/global.d.ts',
+];
 var findUselessFile = function () {
     var argvs = process.argv.splice(3).map(function (item) {
         if (item.substr(item.length - 1) === '/') {
@@ -72,6 +83,9 @@ var findUselessFile = function () {
     var componentsPaths = {};
     // 存一份需要检测的路径
     traverseFile(cwd + argvs[0], function (path) {
+        // 过滤掉 src/global.d.ts src/index.js src/index.ts
+        if (filterFiles.some(function (item) { return item === path.replace(cwd, ''); }))
+            return;
         componentsPaths[path] = 0;
     });
     console.log("\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89 " + argvs[0] + " \u76EE\u5F55\u4E0B\u5171\u68C0\u6D4B\u5230" + Object.keys(componentsPaths).length + "\u4E2A\u6587\u4EF6");
@@ -80,19 +94,22 @@ var findUselessFile = function () {
     traverseFile(cwd + argvs[1], function (filePath) {
         var readFileSyncRes = fs.readFileSync(filePath, 'utf8');
         // 找到 from 'react', from './detail.js' 等
-        var fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
-        // 找到 import './index.less', import './detail.less' 等
-        var importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || [];
+        // const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
+        var fromList = readFileSyncRes.match(Reg.form) || [];
+        // 找到 import './index.less', import './detail.less' @import './index.less' 等
+        // const importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || []
+        var importList = readFileSyncRes.match(Reg.import) || [];
         // 找到 import('@/containers/a/purchase/apply')  require('channelOpera/pages/home')
-        var requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || [];
+        // const requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || []
+        var requireList = readFileSyncRes.match(Reg.require) || [];
         // 相对路径匹配
         var matchRes = __spreadArrays(fromList, importList, requireList).map(function (item) {
-            // 去掉 "from ", "import ", "import(", "require("
+            // 去掉 "from ", "import ", "import(", "require(", "@import "
             return item.replace("from ", '')
                 .replace("import ", '')
                 .replace("import(", '')
                 .replace("require(", '')
-                .replace(/\'/g, '');
+                .replace(/(\'|\")/g, '');
         }).map(function (item) {
             // 兼容引用文件时，结尾为 '/' 的情况
             if (item.substr(item.length - 1) === '/') {
@@ -107,7 +124,7 @@ var findUselessFile = function () {
             // 相对路径转化成绝对路径
             // 转化 alias @ 
             if (item.includes('@')) {
-                return item.replace('@', aliasReg);
+                return item.replace('@', cwd + 'src');
             }
             // 其他相对路径转化
             return path.resolve(filePath, '..', item);
@@ -116,7 +133,14 @@ var findUselessFile = function () {
             return;
         // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(componentsPaths).forEach(function (key) {
-            if (matchRes.some(function (item) { return dealIndexJS(item) === dealIndexJS(key); })) {
+            if (matchRes.some(function (item) {
+                // console.log('-----------------------')
+                // console.log(item)
+                // console.log(dealIndexJS(item))
+                // console.log(key)
+                // console.log(dealIndexJS(key))
+                return dealIndexJS(item) === dealIndexJS(key);
+            })) {
                 delete componentsPaths[key];
             }
         });

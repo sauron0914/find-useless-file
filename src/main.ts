@@ -4,12 +4,24 @@ const path = require('path')
 const exec = require('child_process').exec
 const cwd = process.cwd() + '/'
 
-const aliasReg =  cwd + 'src'
-
 const fileName = 'find-useless-file.json'
 
 const dealIndexJS = path => path.replace(/(\/index)?(.(j|t)s(x)?)?/g, '')
+// const dealIndexJS = path => path.replace(/(\/index)?(.\w+?)?/g, '')
  
+const Reg = {
+    form: /(from (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
+    import: /(import (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
+    require: /(import|require)\((('[.@\/\w-]+')|("[.@\/\w-]+)")/g,
+}
+
+// 默认被过滤的文件
+const filterFiles = [
+    'src/index.ts',
+    'src/index.js',
+    'src/global.d.ts',
+]
+
 const findUselessFile  = ()=> {
 
     const argvs = process.argv.splice(3).map(item=> {
@@ -31,6 +43,9 @@ const findUselessFile  = ()=> {
 
     // 存一份需要检测的路径
     traverseFile(cwd + argvs[0], path => {
+         // 过滤掉 src/global.d.ts src/index.js src/index.ts
+        if(filterFiles.some(item=> item === path.replace(cwd, ''))) return
+        
         componentsPaths[path] = 0
     })
 
@@ -45,22 +60,25 @@ const findUselessFile  = ()=> {
         const readFileSyncRes = fs.readFileSync(filePath , 'utf8')
 
         // 找到 from 'react', from './detail.js' 等
-        const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
+        // const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
+        const fromList = readFileSyncRes.match(Reg.form) || []
 
-        // 找到 import './index.less', import './detail.less' 等
-        const importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || []
+        // 找到 import './index.less', import './detail.less' @import './index.less' 等
+        // const importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || []
+        const importList = readFileSyncRes.match(Reg.import) || []
 
         // 找到 import('@/containers/a/purchase/apply')  require('channelOpera/pages/home')
-        const requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || []
-
+        // const requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || []
+        const requireList = readFileSyncRes.match(Reg.require) || []
+        
         // 相对路径匹配
         const matchRes: string[] = [...fromList, ...importList, ...requireList].map(item=> {
-            // 去掉 "from ", "import ", "import(", "require("
+            // 去掉 "from ", "import ", "import(", "require(", "@import "
             return item.replace("from ", '')
                 .replace("import ", '')
                 .replace("import(", '')
                 .replace("require(", '')
-                .replace(/\'/g, '')
+                .replace(/(\'|\")/g, '')
         }).map(item=>{
             // 兼容引用文件时，结尾为 '/' 的情况
             if(item.substr(item.length -1) === '/') {
@@ -75,7 +93,7 @@ const findUselessFile  = ()=> {
             // 相对路径转化成绝对路径
             // 转化 alias @ 
             if(item.includes('@')) {
-                return item.replace('@', aliasReg)
+                return item.replace('@', cwd + 'src')
             }
             // 其他相对路径转化
             return path.resolve(filePath, '..', item)
@@ -85,7 +103,14 @@ const findUselessFile  = ()=> {
  
         // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(componentsPaths).forEach((key)=> {
-            if(matchRes.some(item=> dealIndexJS(item) === dealIndexJS(key))) {
+            if(matchRes.some(item=> {
+                // console.log('-----------------------')
+                // console.log(item)
+                // console.log(dealIndexJS(item))
+                // console.log(key)
+                // console.log(dealIndexJS(key))
+                return dealIndexJS(item) === dealIndexJS(key)
+            })) {
                 delete componentsPaths[key]
             }
         })
