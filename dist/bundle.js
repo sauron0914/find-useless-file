@@ -79,13 +79,19 @@ var findUselessFile = function () {
         var readFileSyncRes = fs.readFileSync(path, 'utf8');
         var currentPathLevel = path.match(/[@\w\/-]+\//ig)[0];
         // 找到 from 'react', from './detail.js' 等
-        var fromListFrom = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
+        var fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || [];
         // 找到 import './index.less', import './detail.less' 等
-        var fromList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || [];
+        var importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || [];
+        // 找到 import('@/containers/a/purchase/apply')  require('channelOpera/pages/home')
+        var requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || [];
         // 相对路径匹配
-        var matchRes = __spreadArrays(fromListFrom, fromList).map(function (item) {
-            // 去掉 "from ", "import "
-            return item.replace("from ", '').replace("import ", '').replace(/\'/g, '');
+        var matchRes = __spreadArrays(fromList, importList, requireList).map(function (item) {
+            // 去掉 "from ", "import ", "import(", "require("
+            return item.replace("from ", '')
+                .replace("import ", '')
+                .replace("import(", '')
+                .replace("require(", '')
+                .replace(/\'/g, '');
         }).map(function (item) {
             // 兼容引用文件时，结尾为 '/' 的情况
             if (item.substr(item.length - 1) === '/') {
@@ -123,6 +129,11 @@ var findUselessFile = function () {
             }
         });
     });
+    console.log('componentsPaths', componentsPaths);
+    if (!Object.keys(componentsPaths).length) {
+        console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！');
+        // return
+    }
     fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(Object.keys(componentsPaths).map(function (item) { return item.replace(cwd, ''); }), null, '\t'), {}, function (err) {
         if (err)
             console.log(err);

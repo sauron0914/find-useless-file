@@ -42,15 +42,22 @@ const findUselessFile  = ()=> {
         const currentPathLevel = path.match(/[@\w\/-]+\//ig)[0]
 
         // 找到 from 'react', from './detail.js' 等
-        const fromListFrom = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
+        const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
 
         // 找到 import './index.less', import './detail.less' 等
-        const fromList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || []
+        const importList = readFileSyncRes.match(/(import ['.@\/\w-]+')/g) || []
+
+        // 找到 import('@/containers/a/purchase/apply')  require('channelOpera/pages/home')
+        const requireList = readFileSyncRes.match(/(import|require)\(['.@\/\w-']+'/g) || []
 
         // 相对路径匹配
-        const matchRes: string[] = [...fromListFrom, ...fromList].map(item=> {
-            // 去掉 "from ", "import "
-            return item.replace("from ", '').replace("import ", '').replace(/\'/g, '')
+        const matchRes: string[] = [...fromList, ...importList, ...requireList].map(item=> {
+            // 去掉 "from ", "import ", "import(", "require("
+            return item.replace("from ", '')
+                .replace("import ", '')
+                .replace("import(", '')
+                .replace("require(", '')
+                .replace(/\'/g, '')
         }).map(item=>{
             // 兼容引用文件时，结尾为 '/' 的情况
             if(item.substr(item.length -1) === '/') {
@@ -88,6 +95,13 @@ const findUselessFile  = ()=> {
             }
         })
     })
+
+    console.log('componentsPaths', componentsPaths)
+
+    if(!Object.keys(componentsPaths).length) {
+        console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！')
+        // return
+    }
 
     fs.writeFile(
         cwd+'find-useless-file.json', 
