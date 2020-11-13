@@ -129,7 +129,6 @@ var findUselessFile = function () {
             }
         });
     });
-    console.log('componentsPaths', componentsPaths);
     if (!Object.keys(componentsPaths).length) {
         console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！');
         // return
