@@ -137,12 +137,12 @@ var findUselessFile = function () {
             return item;
         }).filter(function (item) {
             // 去掉第三方库 "react" "vue" "moment" 等
-            var firstStr = item.substr(0, 1);
-            return firstStr === '.' || firstStr === '@';
+            // const firstStr = item.substr(0,1)
+            return item[0] === '.' || (item[0] + item[1] === '@/');
         }).map(function (item) {
             // 相对路径转化成绝对路径
             // 转化 alias @ 
-            if (item.includes('@')) {
+            if (item.startsWith('@')) {
                 return item.replace('@', cwd + 'src');
             }
             // 其他相对路径转化
