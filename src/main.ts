@@ -1,17 +1,23 @@
-import { deleteEmptyFolder, traverseFile } from './utils'
-const fs = require('fs')
-const path = require('path')
-const exec = require('child_process').exec
+import { deleteEmptyFolder, delUselessFileExec } from './utils'
+import { traverseFile, getArgvs, isChangesNotStagedForCommit } from "./utils"
+import chalk from 'chalk'
+import fs from 'fs'
+import path from 'path'
+import { exec } from 'child_process'
+import ora from 'ora'
+
 const cwd = process.cwd() + '/'
 
 const fileName = 'find-useless-file.json'
+
+const suffixs = ['js', 'ts', 'tsx', 'jsx']
 
 // const dealIndexJS = path => path.replace(/(\/index)?(.(((j|t)s(x)?)|(less|scss)))?/g, '')
 const dealIndexJS = path => {
 
     const res = path.split('.')
 
-    const noSuffix = res.length > 1 ? res.slice(0, res.length -1).join('.') : path
+    const noSuffix = suffixs.includes(res[res.length -1]) ? res.slice(0, res.length -1).join('.') : path
 
     return noSuffix.replace(/\/index$/g, '')
     
@@ -30,40 +36,19 @@ const filterFiles = [
     'src/global.d.ts',
 ]
 
-const findUselessFile  = ()=> {
+let queryNumberOfTimes = 0
 
-    const argvs = process.argv.splice(3).map(item=> {
-        if(item.substr(item.length -1) === '/') {
-            return item.substr(0, item.length -1)
-        }
-        return item
-    })
-    
-    if(argvs.length !== 2) {
-        throw new Error('仅支持命令 find-useless-file find filePath1 filePath2');
-    }
+const dealComponentsPaths = (initComponentsPaths, uselessFiles = [], argvs) => {
 
-    exec( 'rm -rf ' + cwd + fileName)
+    const currentComponentsPaths = {...initComponentsPaths}
 
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始查找文件...')
-
-    const componentsPaths = {}
-
-    // 存一份需要检测的路径
-    traverseFile(cwd + argvs[0], path => {
-         // 过滤掉 src/global.d.ts src/index.js src/index.ts
-        if(filterFiles.some(item=> item === path.replace(cwd, ''))) return
-
-        componentsPaths[path] = 0
-    })
-
-    console.log(`🎉 🎉 🎉 ${argvs[0]} 目录下共检测到${Object.keys(componentsPaths).length}个文件`)
-
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始检测文件...')
-
-    console.log('❗ ❗ ❗ 文件检测越多，检测范围越大，用时越久...')
+    const spinner = ora(chalk.blueBright(`第${++queryNumberOfTimes}次遍历文件...`)).start();
 
     traverseFile(cwd + argvs[1], filePath => {
+        if(uselessFiles.includes(filePath)) {
+            delete currentComponentsPaths[filePath]
+            return
+        }
 
         const readFileSyncRes = fs.readFileSync(filePath , 'utf8')
 
@@ -111,63 +96,118 @@ const findUselessFile  = ()=> {
         if(!matchRes.length) return
 
         // 匹配到用到的路径，就直接把componentsPaths的key delete
-        Object.keys(componentsPaths).forEach((key)=> {
-            if(matchRes.some(item=> dealIndexJS(item) === dealIndexJS(key))) {
-                delete componentsPaths[key]
+        Object.keys(initComponentsPaths).forEach((key)=> {
+            if(matchRes.some(item=> {
+                return dealIndexJS(item) === dealIndexJS(key)
+            })) {
+                delete currentComponentsPaths[key]
             }
         })
     })
 
-    if(!Object.keys(componentsPaths).length) {
-        console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！')
+    uselessFiles.push(...Object.keys(currentComponentsPaths))
+
+    spinner.succeed(chalk.greenBright(`第${queryNumberOfTimes}次遍历文件成功`));
+
+    if(!Object.keys(currentComponentsPaths).length) return uselessFiles
+
+    return dealComponentsPaths(initComponentsPaths, uselessFiles, argvs )
+}
+
+const findUselessFileDeal  = ()=> {
+    const argvs = getArgvs().map(item=> {
+        if(item.substr(item.length -1) === '/') {
+            return item.substr(0, item.length -1)
+        }
+        return item
+    })
+    
+    if(argvs.length !== 2) {
+        console.log(chalk.red('仅支持命令 dian-codemod find-useless-file filePath1 filePath2'))
+        return 
+    }
+
+    exec( 'rm -rf ' + cwd + fileName)
+
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始查找文件...')
+
+    const initComponentsPaths = {}
+
+    // 存一份需要检测的路径
+    traverseFile(cwd + argvs[0], path => {
+         // 过滤掉 src/global.d.ts src/index.js src/index.ts
+        if(filterFiles.some(item=> item === path.replace(cwd, ''))) return
+
+        initComponentsPaths[path] = 0
+    })
+
+    const uselessFiles = []
+
+    console.log(`🎉 🎉 🎉 ${argvs[0]} 目录下共检测到${Object.keys(initComponentsPaths).length}个文件`)
+
+    console.log(chalk.yellowBright('可能会对文件多次遍历便于一次性找到所有未被使用的文件...'))
+
+     
+    const resComponents = dealComponentsPaths(initComponentsPaths, uselessFiles, argvs)
+
+    if(!resComponents.length) {
+        console.log(chalk.greenBright('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！'))
         return
     }
 
     fs.writeFile(
         cwd+'find-useless-file.json', 
-        JSON.stringify(Object.keys(componentsPaths).map(item=> item.replace(cwd, '')), null, '\t'),
+        JSON.stringify(resComponents.map(item=> item.replace(cwd, '')), null, '\t'),
         {},
         function(err){
             if(err) console.log(err)
-            console.log('🎉 🎉 🎉 文件查找成功，存放地址：' + cwd+fileName);
-            console.log('💝 💝 💝共找到' + Object.keys(componentsPaths).length + '个未被使用的文件')
-            console.log(`❗ ❗ ❗ 注意：默认会在当前目录下生成一个${fileName}文件`)
+            console.log('🎉 🎉 🎉 ' + chalk.greenBright(' 文件查找成功，存放地址：' + cwd+fileName));
+            console.log('💝 💝 💝 共找到' + resComponents.length + '个未被使用的文件')
+            console.log('❗ ❗ ❗' + chalk.yellowBright(` 注意：默认会在当前目录下生成一个${fileName}文件`))
             exec( 'open ' + cwd + fileName)
+            delUselessFileExec(fileName).then(res=> {
+                delUselessFile().then(()=> {
+                    delEmptyDir(cwd + argvs[1])
+                })
+            })
         }
     )
 }
 
 const delUselessFile = ()=> {
+    return new Promise(resolve => {
+        resolve((()=>{
+            console.log('🔥 🔥 🔥 I am sure you know what you are doing!!!')
 
-    console.log('🔥 🔥 🔥 I am sure you know what you are doing!!!')
+            console.log('🏊🏻 🏊🏻 🏊🏻 delete useless file...')
 
-    console.log('🏊🏻 🏊🏻 🏊🏻 delete useless file...')
+            const readFileSyncRes = fs.readFileSync(cwd + fileName , 'utf8')
 
-    const readFileSyncRes = fs.readFileSync(cwd + fileName , 'utf8')
+            const list = JSON.parse(readFileSyncRes)
 
-    const list = JSON.parse(readFileSyncRes)
+            list.forEach(item => {
+                fs.unlinkSync(item);
+            });
 
-    list.forEach(item => {
-        fs.unlinkSync(item);
-    });
+            fs.unlinkSync(cwd + fileName)
 
-    fs.unlinkSync(cwd + fileName)
+            console.log('🎉 🎉 🎉delete success!!!')
+        })())
+    })
+}
 
-    console.log('🎉 🎉 🎉delete success!!!')
+const delEmptyDir = (path) => {
     
-}
-
-const delEmptyDir = () => {
-    const argvs = process.argv.splice(3)
-    if(argvs.length !== 1) {
-        throw new Error('仅支持命令 find-useless-file delDir filePath');
-    }
-
     console.log('🏊🏻 🏊🏻 🏊🏻 delete empty folder...')
-
-    deleteEmptyFolder(cwd + argvs[0])
+    deleteEmptyFolder(path)
 
     console.log('🎉 🎉 🎉delete success!!!')
 }
 
-export { findUselessFile, delUselessFile, delEmptyDir }
+const findUselessFile = ()=> {
+    isChangesNotStagedForCommit().then(()=> {
+        findUselessFileDeal()
+    })
+}
+
+export { findUselessFile  }

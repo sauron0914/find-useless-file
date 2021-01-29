@@ -12,19 +12,9 @@ program.version(version)
 program.usage('<command>')
 
 program
-    .command('find')
+    .command('start')
     .description('find useless file')
     .action(commands.findUselessFile)
-
-program
-    .command('del')
-    .description('del useless file')
-    .action(commands.delUselessFile)
-
-program
-    .command('del-empty-dir')
-    .description('del Empty folder')
-    .action(commands.delEmptyDir)
 
 program.parse(process.argv)
 

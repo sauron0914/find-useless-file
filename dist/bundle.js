@@ -2,11 +2,19 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var fs$1 = require('fs');
+var fs = require('fs');
+var inquirer = require('inquirer');
+var child_process = require('child_process');
+var chalk = require('chalk');
+var path = require('path');
+var ora = require('ora');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
-var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs$1);
+var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
+var chalk__default = /*#__PURE__*/_interopDefaultLegacy(chalk);
+var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
+var ora__default = /*#__PURE__*/_interopDefaultLegacy(ora);
 
 /*! *****************************************************************************
 Copyright (c) Microsoft Corporation.
@@ -23,6 +31,17 @@ OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ***************************************************************************** */
 
+var __assign = function() {
+    __assign = Object.assign || function __assign(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+
 function __spreadArrays() {
     for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
     for (var r = Array(s), k = 0, i = 0; i < il; i++)
@@ -31,16 +50,36 @@ function __spreadArrays() {
     return r;
 }
 
-var traverseFile = function (src, callback) {
+var matchSuffix = function (str) {
+    var res = str.match(/\.\w+/g);
+    return res ? res[res.length - 1] : '';
+};
+/**
+ * 获取node命令参数
+ *
+ *  getArgvs() 返回 [file-path1, files-path2]
+*/
+var getArgvs = function () { return __spreadArrays(process.argv).splice(3); };
+/**
+ * src 你需要遍历的文件夹
+ *
+ * callback 返回src下文件夹一个文件path
+ *
+ * includeFile 只遍历你想要的文件 like ['.less', '.ts', '.tsx'] 只返回包含上述数组中的文件path，不传默认返回全部文件path
+ *
+ * 默认过文件夹下 node_modules 文件
+*/
+var traverseFile = function (src, callback, includeFile) {
+    if (includeFile === void 0) { includeFile = []; }
     var paths = fs__default['default'].readdirSync(src).filter(function (item) { return item !== 'node_modules'; });
     paths.forEach(function (path) {
         var _src = src + '/' + path;
         var statSyncRes = fs__default['default'].statSync(_src);
-        if (statSyncRes.isFile()) {
+        if (statSyncRes.isFile() && (!includeFile.length || includeFile.includes(matchSuffix(path)))) {
             callback(_src);
         }
         else if (statSyncRes.isDirectory()) { //是目录则 递归 
-            traverseFile(_src, callback);
+            traverseFile(_src, callback, includeFile);
         }
     });
 };
@@ -64,16 +103,79 @@ var deleteEmptyFolder = function (path) {
         }
     }
 };
+var delUselessFileExec = function (fileName) {
+    console.log("\u2757 \u2757 \u2757\u8BF7\u4ED4\u7EC6\u68C0\u67E5" + fileName + "\u6587\u4EF6\uFF0C\u5220\u9664\u4E00\u4E9B\u53EF\u80FD\u662F\u4F60\u9700\u8981\u7684\u4E0D\u60F3\u88AB\u5220\u9664\u7684\u6587\u4EF6");
+    var promptList = [
+        {
+            type: 'choices',
+            name: 'isContinue',
+            message: "\u5220\u9664" + fileName + "\u4E2D\u5305\u542B\u7684\u6587\u4EF6: (Y/N)?",
+            default: 'Y'
+        },
+    ];
+    return new Promise(function (resolve, reject) {
+        inquirer.prompt(promptList).then(function (res) {
+            res.isContinue === 'Y' && resolve(true);
+        }).catch(function () {
+            reject();
+        });
+    });
+};
+/**
+ * prompt 提示 是否继续操作
+*/
+var continueExec = function () {
+    var promptList = [
+        {
+            type: 'choices',
+            name: 'isContinue',
+            message: '是否继续操作: (Y/N)?',
+            default: 'N'
+        },
+    ];
+    return new Promise(function (resolve, reject) {
+        inquirer.prompt(promptList).then(function (res) {
+            res.isContinue === 'Y' && resolve(true);
+        }).catch(function () {
+            reject();
+        });
+    });
+};
+/**
+ * 检测当前分支status，若是有被修改的文件，则提示
+*/
+var isChangesNotStagedForCommit = function () {
+    var CHANGES_NOT_STAGED_FOR_COMMIT = 'Changes not staged for commit';
+    return new Promise(function (resolve) {
+        child_process.exec('git status', function (err, stdout, stderr) {
+            if (err) {
+                console.log(chalk__default['default'].red('当前目录并未检测到git信息, 执行命令可能会对文件造成无法恢复的情况'));
+                continueExec().then(function () {
+                    resolve(true);
+                });
+            }
+            else {
+                if (stdout.includes(CHANGES_NOT_STAGED_FOR_COMMIT)) {
+                    console.log(chalk__default['default'].red('你有变更的文件未提交，为了确保你的分支不被破坏，请处理后再次执行此命令'));
+                    console.log(chalk__default['default'].red('若是你确保分支安全情况下，你仍可以继续操作'));
+                    continueExec().then(function () {
+                        resolve(true);
+                    });
+                }
+                else
+                    resolve(true);
+            }
+        });
+    });
+};
 
-var fs = require('fs');
-var path = require('path');
-var exec = require('child_process').exec;
 var cwd = process.cwd() + '/';
 var fileName = 'find-useless-file.json';
+var suffixs = ['js', 'ts', 'tsx', 'jsx'];
 // const dealIndexJS = path => path.replace(/(\/index)?(.(((j|t)s(x)?)|(less|scss)))?/g, '')
 var dealIndexJS = function (path) {
     var res = path.split('.');
-    var noSuffix = res.length > 1 ? res.slice(0, res.length - 1).join('.') : path;
+    var noSuffix = suffixs.includes(res[res.length - 1]) ? res.slice(0, res.length - 1).join('.') : path;
     return noSuffix.replace(/\/index$/g, '');
 };
 var Reg = {
@@ -87,31 +189,17 @@ var filterFiles = [
     'src/index.js',
     'src/global.d.ts',
 ];
-var findUselessFile = function () {
-    var argvs = process.argv.splice(3).map(function (item) {
-        if (item.substr(item.length - 1) === '/') {
-            return item.substr(0, item.length - 1);
-        }
-        return item;
-    });
-    if (argvs.length !== 2) {
-        throw new Error('仅支持命令 find-useless-file find filePath1 filePath2');
-    }
-    exec('rm -rf ' + cwd + fileName);
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始查找文件...');
-    var componentsPaths = {};
-    // 存一份需要检测的路径
-    traverseFile(cwd + argvs[0], function (path) {
-        // 过滤掉 src/global.d.ts src/index.js src/index.ts
-        if (filterFiles.some(function (item) { return item === path.replace(cwd, ''); }))
-            return;
-        componentsPaths[path] = 0;
-    });
-    console.log("\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89 " + argvs[0] + " \u76EE\u5F55\u4E0B\u5171\u68C0\u6D4B\u5230" + Object.keys(componentsPaths).length + "\u4E2A\u6587\u4EF6");
-    console.log('🏊🏻 🏊🏻 🏊🏻 开始检测文件...');
-    console.log('❗ ❗ ❗ 文件检测越多，检测范围越大，用时越久...');
+var queryNumberOfTimes = 0;
+var dealComponentsPaths = function (initComponentsPaths, uselessFiles, argvs) {
+    if (uselessFiles === void 0) { uselessFiles = []; }
+    var currentComponentsPaths = __assign({}, initComponentsPaths);
+    var spinner = ora__default['default'](chalk__default['default'].blueBright("\u7B2C" + ++queryNumberOfTimes + "\u6B21\u904D\u5386\u6587\u4EF6...")).start();
     traverseFile(cwd + argvs[1], function (filePath) {
-        var readFileSyncRes = fs.readFileSync(filePath, 'utf8');
+        if (uselessFiles.includes(filePath)) {
+            delete currentComponentsPaths[filePath];
+            return;
+        }
+        var readFileSyncRes = fs__default['default'].readFileSync(filePath, 'utf8');
         // 找到 from 'react', from './detail.js' 等
         // const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
         var fromList = readFileSyncRes.match(Reg.form) || [];
@@ -146,51 +234,92 @@ var findUselessFile = function () {
                 return item.replace('@', cwd + 'src');
             }
             // 其他相对路径转化
-            return path.resolve(filePath, '..', item);
+            return path__default['default'].resolve(filePath, '..', item);
         });
         if (!matchRes.length)
             return;
         // 匹配到用到的路径，就直接把componentsPaths的key delete
-        Object.keys(componentsPaths).forEach(function (key) {
-            if (matchRes.some(function (item) { return dealIndexJS(item) === dealIndexJS(key); })) {
-                delete componentsPaths[key];
+        Object.keys(initComponentsPaths).forEach(function (key) {
+            if (matchRes.some(function (item) {
+                return dealIndexJS(item) === dealIndexJS(key);
+            })) {
+                delete currentComponentsPaths[key];
             }
         });
     });
-    if (!Object.keys(componentsPaths).length) {
-        console.log('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！');
+    uselessFiles.push.apply(uselessFiles, Object.keys(currentComponentsPaths));
+    spinner.succeed(chalk__default['default'].greenBright("\u7B2C" + queryNumberOfTimes + "\u6B21\u904D\u5386\u6587\u4EF6\u6210\u529F"));
+    if (!Object.keys(currentComponentsPaths).length)
+        return uselessFiles;
+    return dealComponentsPaths(initComponentsPaths, uselessFiles, argvs);
+};
+var findUselessFileDeal = function () {
+    var argvs = getArgvs().map(function (item) {
+        if (item.substr(item.length - 1) === '/') {
+            return item.substr(0, item.length - 1);
+        }
+        return item;
+    });
+    if (argvs.length !== 2) {
+        console.log(chalk__default['default'].red('仅支持命令 dian-codemod find-useless-file filePath1 filePath2'));
         return;
     }
-    fs.writeFile(cwd + 'find-useless-file.json', JSON.stringify(Object.keys(componentsPaths).map(function (item) { return item.replace(cwd, ''); }), null, '\t'), {}, function (err) {
+    child_process.exec('rm -rf ' + cwd + fileName);
+    console.log('🏊🏻 🏊🏻 🏊🏻 开始查找文件...');
+    var initComponentsPaths = {};
+    // 存一份需要检测的路径
+    traverseFile(cwd + argvs[0], function (path) {
+        // 过滤掉 src/global.d.ts src/index.js src/index.ts
+        if (filterFiles.some(function (item) { return item === path.replace(cwd, ''); }))
+            return;
+        initComponentsPaths[path] = 0;
+    });
+    var uselessFiles = [];
+    console.log("\uD83C\uDF89 \uD83C\uDF89 \uD83C\uDF89 " + argvs[0] + " \u76EE\u5F55\u4E0B\u5171\u68C0\u6D4B\u5230" + Object.keys(initComponentsPaths).length + "\u4E2A\u6587\u4EF6");
+    console.log(chalk__default['default'].yellowBright('可能会对文件多次遍历便于一次性找到所有未被使用的文件...'));
+    var resComponents = dealComponentsPaths(initComponentsPaths, uselessFiles, argvs);
+    if (!resComponents.length) {
+        console.log(chalk__default['default'].greenBright('🎉 🎉 🎉 没有未被使用的文件，皆大欢喜！！！'));
+        return;
+    }
+    fs__default['default'].writeFile(cwd + 'find-useless-file.json', JSON.stringify(resComponents.map(function (item) { return item.replace(cwd, ''); }), null, '\t'), {}, function (err) {
         if (err)
             console.log(err);
-        console.log('🎉 🎉 🎉 文件查找成功，存放地址：' + cwd + fileName);
-        console.log('💝 💝 💝共找到' + Object.keys(componentsPaths).length + '个未被使用的文件');
-        console.log("\u2757 \u2757 \u2757 \u6CE8\u610F\uFF1A\u9ED8\u8BA4\u4F1A\u5728\u5F53\u524D\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A" + fileName + "\u6587\u4EF6");
-        exec('open ' + cwd + fileName);
+        console.log('🎉 🎉 🎉 ' + chalk__default['default'].greenBright(' 文件查找成功，存放地址：' + cwd + fileName));
+        console.log('💝 💝 💝 共找到' + resComponents.length + '个未被使用的文件');
+        console.log('❗ ❗ ❗' + chalk__default['default'].yellowBright(" \u6CE8\u610F\uFF1A\u9ED8\u8BA4\u4F1A\u5728\u5F53\u524D\u76EE\u5F55\u4E0B\u751F\u6210\u4E00\u4E2A" + fileName + "\u6587\u4EF6"));
+        child_process.exec('open ' + cwd + fileName);
+        delUselessFileExec(fileName).then(function (res) {
+            delUselessFile().then(function () {
+                delEmptyDir(cwd + argvs[1]);
+            });
+        });
     });
 };
 var delUselessFile = function () {
-    console.log('🔥 🔥 🔥 I am sure you know what you are doing!!!');
-    console.log('🏊🏻 🏊🏻 🏊🏻 delete useless file...');
-    var readFileSyncRes = fs.readFileSync(cwd + fileName, 'utf8');
-    var list = JSON.parse(readFileSyncRes);
-    list.forEach(function (item) {
-        fs.unlinkSync(item);
+    return new Promise(function (resolve) {
+        resolve((function () {
+            console.log('🔥 🔥 🔥 I am sure you know what you are doing!!!');
+            console.log('🏊🏻 🏊🏻 🏊🏻 delete useless file...');
+            var readFileSyncRes = fs__default['default'].readFileSync(cwd + fileName, 'utf8');
+            var list = JSON.parse(readFileSyncRes);
+            list.forEach(function (item) {
+                fs__default['default'].unlinkSync(item);
+            });
+            fs__default['default'].unlinkSync(cwd + fileName);
+            console.log('🎉 🎉 🎉delete success!!!');
+        })());
     });
-    fs.unlinkSync(cwd + fileName);
+};
+var delEmptyDir = function (path) {
+    console.log('🏊🏻 🏊🏻 🏊🏻 delete empty folder...');
+    deleteEmptyFolder(path);
     console.log('🎉 🎉 🎉delete success!!!');
 };
-var delEmptyDir = function () {
-    var argvs = process.argv.splice(3);
-    if (argvs.length !== 1) {
-        throw new Error('仅支持命令 find-useless-file delDir filePath');
-    }
-    console.log('🏊🏻 🏊🏻 🏊🏻 delete empty folder...');
-    deleteEmptyFolder(cwd + argvs[0]);
-    console.log('🎉 🎉 🎉delete success!!!');
+var findUselessFile = function () {
+    isChangesNotStagedForCommit().then(function () {
+        findUselessFileDeal();
+    });
 };
 
-exports.delEmptyDir = delEmptyDir;
-exports.delUselessFile = delUselessFile;
 exports.findUselessFile = findUselessFile;
