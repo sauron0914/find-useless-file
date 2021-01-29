@@ -2,17 +2,17 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
-var fs = require('fs');
-var inquirer = require('inquirer');
-var child_process = require('child_process');
 var chalk = require('chalk');
+var fs = require('fs');
 var path = require('path');
+var child_process = require('child_process');
 var ora = require('ora');
+var inquirer = require('inquirer');
 
 function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
 
-var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
 var chalk__default = /*#__PURE__*/_interopDefaultLegacy(chalk);
+var fs__default = /*#__PURE__*/_interopDefaultLegacy(fs);
 var path__default = /*#__PURE__*/_interopDefaultLegacy(path);
 var ora__default = /*#__PURE__*/_interopDefaultLegacy(ora);
 
@@ -176,7 +176,10 @@ var suffixs = ['js', 'ts', 'tsx', 'jsx'];
 var dealIndexJS = function (path) {
     var res = path.split('.');
     var noSuffix = suffixs.includes(res[res.length - 1]) ? res.slice(0, res.length - 1).join('.') : path;
-    return noSuffix.replace(/\/index$/g, '');
+    while (noSuffix.endsWith('/index')) {
+        noSuffix = noSuffix.replace(/\/index$/g, '');
+    }
+    return noSuffix;
 };
 var Reg = {
     form: /(from (('[.@\/\w-]+')|("[.@\/\w-]+)"))/g,
@@ -194,11 +197,10 @@ var dealComponentsPaths = function (initComponentsPaths, uselessFiles, argvs) {
     if (uselessFiles === void 0) { uselessFiles = []; }
     var currentComponentsPaths = __assign({}, initComponentsPaths);
     var spinner = ora__default['default'](chalk__default['default'].blueBright("\u7B2C" + ++queryNumberOfTimes + "\u6B21\u904D\u5386\u6587\u4EF6...")).start();
+    uselessFiles.forEach(function (item) {
+        delete currentComponentsPaths[item];
+    });
     traverseFile(cwd + argvs[1], function (filePath) {
-        if (uselessFiles.includes(filePath)) {
-            delete currentComponentsPaths[filePath];
-            return;
-        }
         var readFileSyncRes = fs__default['default'].readFileSync(filePath, 'utf8');
         // 找到 from 'react', from './detail.js' 等
         // const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []

@@ -1,10 +1,14 @@
-import { deleteEmptyFolder, delUselessFileExec } from './utils'
-import { traverseFile, getArgvs, isChangesNotStagedForCommit } from "./utils"
 import chalk from 'chalk'
 import fs from 'fs'
 import path from 'path'
 import { exec } from 'child_process'
 import ora from 'ora'
+import { deleteEmptyFolder,
+    delUselessFileExec,
+    traverseFile,
+    getArgvs,
+    isChangesNotStagedForCommit
+} from './utils'
 
 const cwd = process.cwd() + '/'
 
@@ -17,9 +21,13 @@ const dealIndexJS = path => {
 
     const res = path.split('.')
 
-    const noSuffix = suffixs.includes(res[res.length -1]) ? res.slice(0, res.length -1).join('.') : path
+    let noSuffix = suffixs.includes(res[res.length -1]) ? res.slice(0, res.length -1).join('.') : path
 
-    return noSuffix.replace(/\/index$/g, '')
+    while(noSuffix.endsWith('/index')) {
+        noSuffix = noSuffix.replace(/\/index$/g, '')
+    }
+
+    return noSuffix
     
 }
  
@@ -44,11 +52,11 @@ const dealComponentsPaths = (initComponentsPaths, uselessFiles = [], argvs) => {
 
     const spinner = ora(chalk.blueBright(`第${++queryNumberOfTimes}次遍历文件...`)).start();
 
+    uselessFiles.forEach(item=> {
+        delete currentComponentsPaths[item]
+    })
+
     traverseFile(cwd + argvs[1], filePath => {
-        if(uselessFiles.includes(filePath)) {
-            delete currentComponentsPaths[filePath]
-            return
-        }
 
         const readFileSyncRes = fs.readFileSync(filePath , 'utf8')
 
@@ -97,7 +105,7 @@ const dealComponentsPaths = (initComponentsPaths, uselessFiles = [], argvs) => {
 
         // 匹配到用到的路径，就直接把componentsPaths的key delete
         Object.keys(initComponentsPaths).forEach((key)=> {
-            if(matchRes.some(item=> {
+            if(matchRes.some(item=> { 
                 return dealIndexJS(item) === dealIndexJS(key)
             })) {
                 delete currentComponentsPaths[key]
