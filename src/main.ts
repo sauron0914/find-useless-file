@@ -58,6 +58,8 @@ const dealComponentsPaths = (initComponentsPaths, uselessFiles = [], argvs) => {
 
     traverseFile(cwd + argvs[1], filePath => {
 
+        if(uselessFiles.includes(filePath)) return
+        
         const readFileSyncRes = fs.readFileSync(filePath , 'utf8')
 
         // 找到 from 'react', from './detail.js' 等

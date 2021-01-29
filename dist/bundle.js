@@ -201,6 +201,8 @@ var dealComponentsPaths = function (initComponentsPaths, uselessFiles, argvs) {
         delete currentComponentsPaths[item];
     });
     traverseFile(cwd + argvs[1], function (filePath) {
+        if (uselessFiles.includes(filePath))
+            return;
         var readFileSyncRes = fs__default['default'].readFileSync(filePath, 'utf8');
         // 找到 from 'react', from './detail.js' 等
         // const fromList = readFileSyncRes.match(/(from ['.@\/\w-]+')/g) || []
